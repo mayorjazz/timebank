@@ -127,3 +127,44 @@
         })
         (log-event "user-action" "user-registered")
         (ok true)))
+
+;; String Validation Functions
+(define-private (is-valid-string (input (string-ascii 64)))
+    (and
+        (>= (len input) u1)
+        (<= (len input) u64)))
+
+(define-private (is-valid-category (input (string-ascii 32)))
+    (and
+        (>= (len input) u1)
+        (<= (len input) u32)))
+
+;; Skill Management
+(define-public (register-skill (skill-name (string-ascii 64)) (category (string-ascii 32)))
+    (begin
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+        (asserts! (is-none (map-get? skills skill-name)) ERR_ALREADY_VERIFIED)
+        (asserts! (is-valid-string skill-name) ERR_INVALID_PARAMS)
+        (asserts! (is-valid-category category) ERR_INVALID_PARAMS)
+        (map-set skills skill-name {
+            category: category,
+            min-reputation: u0,
+            verification-required: true
+        })
+        (log-event "skill-action" "skill-registered")
+        (ok true)))
+
+(define-public (verify-user-skill (user principal) (skill-name (string-ascii 64)))
+    (begin
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+        (asserts! (is-some (map-get? skills skill-name)) ERR_NOT_FOUND)
+        (asserts! (is-some (map-get? users user)) ERR_NOT_FOUND)
+        (map-set user-skills {user: user, skill: skill-name} 
+            {
+                verified: true,
+                verified-by: (some tx-sender),
+                verified-at: (some block-height),
+                rating: u0
+            })
+        (log-event "skill-action" "skill-verified")
+        (ok true)))
