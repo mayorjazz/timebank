@@ -168,3 +168,38 @@
             })
         (log-event "skill-action" "skill-verified")
         (ok true)))
+
+;; Exchange Functions
+(define-public (create-exchange (skill (string-ascii 64)) (hours uint) (receiver principal))
+    (begin
+        (asserts! (is-valid-string skill) ERR_INVALID_PARAMS)
+        (let ((exchange-id (+ (var-get exchange-nonce) u1)))
+        (asserts! (is-some (map-get? users tx-sender)) ERR_UNAUTHORIZED)
+        (asserts! (is-some (map-get? users receiver)) ERR_NOT_FOUND)
+        (asserts! (not (is-eq tx-sender receiver)) ERR_SELF_EXCHANGE)
+        (asserts! (and (>= hours (var-get min-exchange-duration)) 
+                      (<= hours (var-get max-exchange-duration))) 
+                 ERR_INVALID_PARAMS)
+        (asserts! (is-some (map-get? user-skills 
+            {user: tx-sender, skill: skill})) ERR_SKILL_NOT_VERIFIED)
+        (map-set time-exchanges exchange-id {
+            provider: tx-sender,
+            receiver: receiver,
+            skill: skill,
+            hours: hours,
+            status: "pending",
+            created-at: block-height,
+            completed-at: none
+        })
+        (var-set exchange-nonce exchange-id)
+        (log-event "exchange-action" "exchange-created")
+        (ok exchange-id))))
+
+(define-public (accept-exchange (exchange-id uint))
+    (let ((exchange (unwrap! (map-get? time-exchanges exchange-id) ERR_NOT_FOUND)))
+        (asserts! (is-eq (get receiver exchange) tx-sender) ERR_UNAUTHORIZED)
+        (asserts! (is-eq (get status exchange) "pending") ERR_ALREADY_COMPLETED)
+        (map-set time-exchanges exchange-id 
+            (merge exchange {status: "active"}))
+        (log-event "exchange-action" "exchange-accepted")
+        (ok true)))
