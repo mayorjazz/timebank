@@ -203,3 +203,65 @@
             (merge exchange {status: "active"}))
         (log-event "exchange-action" "exchange-accepted")
         (ok true)))
+
+(define-public (complete-exchange (exchange-id uint))
+    (let ((exchange (unwrap! (map-get? time-exchanges exchange-id) ERR_NOT_FOUND)))
+        (asserts! (is-eq (get receiver exchange) tx-sender) ERR_UNAUTHORIZED)
+        (asserts! (is-eq (get status exchange) "active") ERR_ALREADY_COMPLETED)
+        (try! (update-user-stats 
+            (get provider exchange) 
+            (get receiver exchange) 
+            (get hours exchange)))
+        (map-set time-exchanges exchange-id 
+            (merge exchange {
+                status: "completed",
+                completed-at: (some block-height)
+            }))
+        (log-event "exchange-action" "exchange-completed")
+        (ok true)))
+
+(define-public (cancel-exchange (exchange-id uint))
+    (let ((exchange (unwrap! (map-get? time-exchanges exchange-id) ERR_NOT_FOUND)))
+        (asserts! (or (is-eq (get provider exchange) tx-sender)
+                     (is-eq (get receiver exchange) tx-sender)) 
+                 ERR_UNAUTHORIZED)
+        (asserts! (or (is-eq (get status exchange) "pending")
+                     (is-eq (get status exchange) "active"))
+                 ERR_ALREADY_COMPLETED)
+        (map-set time-exchanges exchange-id 
+            (merge exchange {
+                status: "cancelled",
+                completed-at: (some block-height)
+            }))
+        (log-event "exchange-action" "exchange-cancelled")
+        (ok true)))
+
+;; Helper Functions
+(define-private (update-user-stats (provider principal) (receiver principal) (hours uint))
+    (let ((provider-data (unwrap! (map-get? users provider) ERR_NOT_FOUND))
+          (receiver-data (unwrap! (map-get? users receiver) ERR_NOT_FOUND)))
+        (map-set users provider 
+            (merge provider-data {
+                total-hours-given: (+ (get total-hours-given provider-data) hours)
+            }))
+        (map-set users receiver 
+            (merge receiver-data {
+                total-hours-received: (+ (get total-hours-received receiver-data) hours)
+            }))
+        (ok true)))
+
+;; Read-Only Functions
+(define-read-only (get-user-info (user principal))
+    (map-get? users user))
+
+(define-read-only (get-skill-info (skill-name (string-ascii 64)))
+    (map-get? skills skill-name))
+
+(define-read-only (get-exchange (exchange-id uint))
+    (map-get? time-exchanges exchange-id))
+
+(define-read-only (get-contract-owner)
+    (ok CONTRACT_OWNER))
+
+(define-read-only (get-event (event-id uint))
+    (map-get? event-log event-id))
