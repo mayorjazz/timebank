@@ -94,7 +94,7 @@
         (map-set event-log event-id {
             event-type: event-type,
             data: data,
-            block: block-height
+            block: stacks-block-height
         })))
 
 ;; Administrative Functions
@@ -119,7 +119,7 @@
     (begin
         (asserts! (is-none (map-get? users tx-sender)) ERR_ALREADY_VERIFIED)
         (map-set users tx-sender {
-            joined-at: block-height,
+            joined-at: stacks-block-height,
             total-hours-given: u0,
             total-hours-received: u0,
             reputation-score: u0,
@@ -163,7 +163,7 @@
             {
                 verified: true,
                 verified-by: (some tx-sender),
-                verified-at: (some block-height),
+                verified-at: (some stacks-block-height),
                 rating: u0
             })
         (log-event "skill-action" "skill-verified")
@@ -188,7 +188,7 @@
             skill: skill,
             hours: hours,
             status: "pending",
-            created-at: block-height,
+            created-at: stacks-block-height,
             completed-at: none
         })
         (var-set exchange-nonce exchange-id)
@@ -215,7 +215,7 @@
         (map-set time-exchanges exchange-id 
             (merge exchange {
                 status: "completed",
-                completed-at: (some block-height)
+                completed-at: (some stacks-block-height)
             }))
         (log-event "exchange-action" "exchange-completed")
         (ok true)))
@@ -231,7 +231,7 @@
         (map-set time-exchanges exchange-id 
             (merge exchange {
                 status: "cancelled",
-                completed-at: (some block-height)
+                completed-at: (some stacks-block-height)
             }))
         (log-event "exchange-action" "exchange-cancelled")
         (ok true)))
