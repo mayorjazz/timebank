@@ -41,3 +41,46 @@
         reputation-score: uint,
         is-active: bool
     })
+
+(define-map skills
+    (string-ascii 64)
+    {
+        category: (string-ascii 32),
+        min-reputation: uint,
+        verification-required: bool
+    })
+
+(define-map user-skills
+    {user: principal, skill: (string-ascii 64)}
+    {
+        verified: bool,
+        verified-by: (optional principal),
+        verified-at: (optional uint),
+        rating: uint
+    })
+
+(define-map time-exchanges
+    uint
+    {
+        provider: principal,
+        receiver: principal,
+        skill: (string-ascii 64),
+        hours: uint,
+        status: (string-ascii 16),  ;; "pending", "active", "completed", "cancelled"
+        created-at: uint,
+        completed-at: (optional uint)
+    })
+
+;; Variables
+(define-data-var exchange-nonce uint u0)
+(define-data-var min-exchange-duration uint u1) ;; Minimum 1 hour
+(define-data-var max-exchange-duration uint u8) ;; Maximum 8 hours
+
+;; Event Map for persistent logging
+(define-map event-log 
+    uint 
+    {
+        event-type: (string-ascii 32),
+        data: (string-ascii 256),
+        block: uint
+    })
