@@ -84,3 +84,46 @@
         data: (string-ascii 256),
         block: uint
     })
+
+(define-data-var event-nonce uint u0)
+
+;; Event Logging - Fixed to be persistent and type-safe
+(define-private (log-event (event-type (string-ascii 32)) (data (string-ascii 256)))
+    (let ((event-id (+ (var-get event-nonce) u1)))
+        (var-set event-nonce event-id)
+        (map-set event-log event-id {
+            event-type: event-type,
+            data: data,
+            block: block-height
+        })))
+
+;; Administrative Functions
+(define-public (set-min-exchange-duration (hours uint))
+    (begin
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+        (asserts! (>= hours u1) ERR_INVALID_PARAMS)
+        (var-set min-exchange-duration hours)
+        (log-event "config-update" "min-exchange-duration-updated")
+        (ok true)))
+
+(define-public (set-max-exchange-duration (hours uint))
+    (begin
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+        (asserts! (>= hours (var-get min-exchange-duration)) ERR_INVALID_PARAMS)
+        (var-set max-exchange-duration hours)
+        (log-event "config-update" "max-exchange-duration-updated")
+        (ok true)))
+
+;; User Management
+(define-public (register-user)
+    (begin
+        (asserts! (is-none (map-get? users tx-sender)) ERR_ALREADY_VERIFIED)
+        (map-set users tx-sender {
+            joined-at: block-height,
+            total-hours-given: u0,
+            total-hours-received: u0,
+            reputation-score: u0,
+            is-active: true
+        })
+        (log-event "user-action" "user-registered")
+        (ok true)))
